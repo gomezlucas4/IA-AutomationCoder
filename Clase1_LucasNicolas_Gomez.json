@@ -1,0 +1,313 @@
+{
+  "name": "Clase 1",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.message.text }}",
+        "options": {
+          "systemMessage": "=[ROL Y ÁMBITO]\nSos el asistente de atención de Distribuidora Petriella, una distribuidora de La Plata de productos de panadería, snacks y frutos secos. Atendés por chat a clientes que consultan por productos o quieren hacer un pedido. Tu único ámbito es tomar sus datos, entender qué producto y cuánto necesitan, y registrar la consulta para que el equipo la gestione.\n\nNO tenés autorización para: confirmar o aprobar pedidos, informar o inventar precios, descuentos, stock, plazos o costos de entrega, aceptar formas de pago o crédito, ni comprometer decisiones comerciales.\n\n[OBJETIVO OPERATIVO]\nConvertir cada conversación en un registro con: nombre, mail, teléfono, producto, cantidad, prioridad, próxima acción y resumen.\n\n[REGLAS DE USO DE HERRAMIENTAS]\n- Usá la herramienta \"Registrar_Consulta\" SOLO cuando tengas: nombre, al menos un medio de contacto (mail o teléfono), producto y cantidad.\n- Si falta algún dato, pedí todos los que falten en un solo mensaje, de forma breve y amable.\n- Registrá la consulta UNA sola vez. Después de registrarla, confirmale al cliente lo que anotaste y avisale que el equipo se va a comunicar con él.\n- No inventes información. Si el mail o el teléfono no fueron provistos, escribí \"No informado\".\n- Clasificá la prioridad como Alta, Media o Baja según la cantidad pedida, siguiendo las reglas de la herramienta.\n\n[PROTOCOLO DE ESCALAMIENTO / GUARDRAILS]\n- Si el cliente pregunta precios, stock, descuentos, plazos o formas de pago, respondé que lo confirma el equipo y no des ninguna cifra. Seguí tomando los datos de la consulta.\n- Si el cliente tiene un reclamo o pide cancelar o modificar un pedido ya hecho, respondé: \"El caso requiere revisión humana antes de continuar.\" No registres nada.\n- No prometas fechas ni horarios de entrega.\n\n[ESTILO]\n- Escribí en español rioplatense estándar, cordial, claro y profesional.\n- No uses lenguaje inclusivo con terminaciones en -e, -x o @.\n- Sé breve y concreto.",
+          "maxIterations": 6
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        432,
+        0
+      ],
+      "id": "1948e8bf-0e28-49a3-9945-f1da949884d0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        368,
+        192
+      ],
+      "id": "37ad9329-9bea-4233-b9bc-09794280593f",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "QZBpb9cfNQ47n47F",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        160,
+        0
+      ],
+      "id": "daaa724d-0a07-4794-951b-5e97af744a91",
+      "name": "Telegram Trigger",
+      "webhookId": "583e053c-fbbf-429e-865d-a777f2554470",
+      "credentials": {
+        "telegramApi": {
+          "id": "fr1YuKjcimXMFAOB",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1486091356",
+        "text": "={{ $json.output }} ",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        0
+      ],
+      "id": "6a679762-eda9-4fbc-9a2b-b59ee2ba09f0",
+      "name": "Send a text message",
+      "webhookId": "0ae0baa1-4ce6-4ca9-9aec-c6d67b340228",
+      "credentials": {
+        "telegramApi": {
+          "id": "fr1YuKjcimXMFAOB",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Esta herramienta registra en Google Sheets los datos de un cliente de Distribuidora Petriella que consulta por un producto o quiere hacer un pedido.\n\nUSÁ esta herramienta cuando el cliente haya proporcionado como mínimo:\n- su nombre\n- al menos un medio de contacto (mail o teléfono)\n- el producto que necesita\n- la cantidad que necesita, con su unidad (por ejemplo \"20 cajas\" o \"15 kg\").\n\nEl Session ID lo completa el sistema. Nunca se lo pidas al cliente.\n\nAntes de ejecutar la herramienta:\n1. Identificá el producto principal y su cantidad.\n2. Clasificá la prioridad como Alta, Media o Baja según la cantidad pedida.\n3. Elegí la próxima acción recomendada.\n4. Generá un resumen breve y operativo de la consulta.\n\nREGLAS DE PRIORIDAD (valores de ejemplo, ajustalos con el dueño):\n- ALTA: 50 o más unidades, bultos o cajas, o 25 kg o más.\n- MEDIA: entre 10 y 49 unidades, bultos o cajas, o entre 5 y 24 kg.\n- BAJA: menos que eso, o cantidad no definida.\n\nPRÓXIMA ACCIÓN: elegí solo una de estas: \"Enviar cotización\", \"Llamar para confirmar\", \"Armar pedido\", \"Pedir más datos\".\n\nCuando estén disponibles los datos mínimos, ejecutá esta herramienta exactamente UNA vez.\nNo inventes información faltante. Si el mail o el teléfono no fueron informados, escribí \"No informado\".\nSi el cliente consulta por varios productos, registrá el de mayor cantidad como principal e incluí los demás en el resumen.\nNo uses esta herramienta para reclamos, precios, descuentos, pagos o consultas administrativas.",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1ev2ZrUIcbEg06wV5UkONEbG455m2X-fcqCJl7DIv5wM",
+          "mode": "list",
+          "cachedResultName": "Registrar_Consulta",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ev2ZrUIcbEg06wV5UkONEbG455m2X-fcqCJl7DIv5wM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ev2ZrUIcbEg06wV5UkONEbG455m2X-fcqCJl7DIv5wM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Session_ID": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+            "Nombre": "={{ $fromAI('Nombre', 'Nombre del cliente', 'string') }}",
+            "Mail": "={{ $fromAI('Mail', 'Mail del cliente, o \"No informado\"', 'string') }}",
+            "Telefono": "={{ $fromAI('Telefono', 'Teléfono del cliente, o \"No informado\"', 'string') }}",
+            "Producto": "={{ $fromAI('Producto', 'Producto principal que pide el cliente', 'string') }}",
+            "Cantidad": "={{ $fromAI('Cantidad', 'Cantidad con unidad, por ejemplo \"20 cajas\"', 'string') }}",
+            "Proxima_accion": "={{ $fromAI('Proxima_accion', 'Enviar cotización, Llamar para confirmar, Armar pedido o Pedir más datos', 'string') }}",
+            "Resumen": "={{ $fromAI('Resumen', 'Resumen breve y operativo de la consulta', 'string') }}"
+          },
+          "matchingColumns": [
+            "Session_ID"
+          ],
+          "schema": [
+            {
+              "id": "Session_ID",
+              "displayName": "Session_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Mail",
+              "displayName": "Mail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Producto",
+              "displayName": "Producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cantidad",
+              "displayName": "Cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Proxima_accion",
+              "displayName": "Proxima_accion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Resumen",
+              "displayName": "Resumen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        208
+      ],
+      "id": "def0e74c-e2d2-4677-8ac8-a4957bdcb827",
+      "name": "Registrar_Consulta",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZiWwUocZP4ZHErwM",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        496,
+        192
+      ],
+      "id": "16c0485b-b07e-4d5b-b737-5e74978e6b1f",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar_Consulta": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ebc78f14-bddf-4cdf-91e7-4ce35a3edfb9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8fbbf92d62e5a8d40f90ac0f8441dad56fe990e9f59ff823c2f4b7690d8bb89e"
+  },
+  "nodeGroups": [],
+  "id": "hm0wnUUAz4lWxO6o",
+  "tags": []
+}
